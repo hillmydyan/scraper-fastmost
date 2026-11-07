@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  fastmoss-scraper:
+    build: .
+    container_name: fastmoss_scraper_app
+    restart: always
+    ports:
+      - "5000:5000"  # Web Application
+      - "6080:6080"  # noVNC Web Display
+    environment:
+      - PORT=5000
+      - DISPLAY=:99
+      - FLASK_SECRET_KEY=kurma-group-fastmoss-prod-secret-2026
+      # Konfigurasi Notifikasi Telegram (Opsional)
+      - TELEGRAM_BOT_TOKEN=
+      - TELEGRAM_CHAT_ID=
+    volumes:
+      - ./storage:/app/storage
+      - ./config:/app/config
+    shm_size: '2gb' # Penting untuk kestabilan Chromium di dalam Docker
+

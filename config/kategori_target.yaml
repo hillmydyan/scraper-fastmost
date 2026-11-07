@@ -1,0 +1,48 @@
+# Konfigurasi Kategori Target FastMoss Scraper
+
+# Kategori target resmi FastMoss
+target_hierarchy:
+  l1: "Pakaian & Pakaian Dalam Wanita"
+  l2: "Bawahan Wanita"
+  l3_allowed:
+    - "Rok"
+    - "Celana Pendek"
+    - "Legging"
+    - "Jeans"
+    - "Celana Panjang"
+    - "Skirt Pants & Skorts"
+
+# Kata kunci fallback nama produk bila FastMoss tidak memuat breadcrumb kategori
+fallback_keywords:
+  indonesia:
+    - "rok"
+    - "celana"
+    - "legging"
+    - "jeans"
+    - "kulot"
+    - "skort"
+    - "skorts"
+    - "short"
+    - "pants"
+    - "trousers"
+    - "bawahan"
+    - "cutbray"
+    - "jogger"
+    - "cargo pants"
+    - "hotpants"
+  malaysia:
+    - "seluar"
+    - "skirt"
+    - "kain"
+    - "palazzo"
+    - "jeans"
+    - "pants"
+
+# Parameter scraping santai (prioritas akurasi)
+scraping_pace:
+  min_delay_seconds: 3.0
+  max_delay_seconds: 7.0
+  page_timeout_seconds: 30
+  wait_after_search_seconds: 4.0
+  wait_after_filter_seconds: 3.5
+  max_videos_per_creator_default: 50

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FastMoss Scraper{% endblock %} - Kurma Group</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Top Navigation -->
+    <nav class="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo & Brand -->
+                <div class="flex items-center space-x-3">
+                    <a href="/" class="flex items-center space-x-3 group">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-brand-500/30 group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-chart-simple text-xl"></i>
+                        </div>
+                        <div>
+                            <span class="text-lg font-bold tracking-tight text-white block">FastMoss Scraper</span>
+                            <span class="text-[10px] tracking-wider text-slate-400 uppercase font-semibold block">Kurma Group Indonesia</span>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Navigation Links -->
+                <div class="flex items-center space-x-1 sm:space-x-3">
+                    <a href="/" class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {% if active_page == 'new_job' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:text-white hover:bg-slate-800{% endif %}">
+                        <i class="fa-solid fa-plus-circle mr-1.5"></i> Job Baru
+                    </a>
+                    <a href="/history" class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {% if active_page == 'history' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:text-white hover:bg-slate-800{% endif %}">
+                        <i class="fa-solid fa-clock-rotate-left mr-1.5"></i> Riwayat & Hasil
+                    </a>
+                    {% if current_user.is_authenticated and current_user.is_admin %}
+                    <a href="/session" class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {% if active_page == 'session' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:text-white hover:bg-slate-800{% endif %}">
+                        <i class="fa-solid fa-key mr-1.5"></i> Sesi FastMoss
+                    </a>
+                    {% endif %}
+                </div>
+
+                <!-- User Profile / Auth Button -->
+                <div class="flex items-center space-x-3 border-l border-slate-800 pl-4">
+                    {% if current_user.is_authenticated %}
+                    <div class="text-right hidden sm:block">
+                        <span class="text-xs font-bold text-white block">{{ current_user.name }}</span>
+                        <span class="text-[10px] uppercase font-bold px-1.5 py-0.2 rounded {% if current_user.is_admin %}bg-purple-900 text-purple-200{% else %}bg-slate-800 text-slate-300{% endif %}">
+                            {{ current_user.role }}
+                        </span>
+                    </div>
+                    <a href="/logout" title="Logout" class="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </a>
+                    {% else %}
+                    <a href="/login" class="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition">
+                        Login
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4">
+            <p>© 2026 Kurma Group Indonesia · FastMoss Kreator Analitik Scraper</p>
+            <p class="mt-1 text-slate-400">Prinsip Kerja: <span class="font-medium text-slate-600">"Asal Benar & Stabil, Tidak Perlu Cepat"</span></p>
+        </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
+

@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+
+{% block title %}Buat Job Baru - FastMoss Scraper{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+    <!-- Header Section -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-slate-200">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900">Buat Job Scraping Baru</h1>
+            <p class="text-sm text-slate-500 mt-1">Upload daftar kreator TikTok Shop dalam format Excel atau CSV untuk diekstrak datanya dari FastMoss.</p>
+        </div>
+        <div class="mt-4 sm:mt-0 flex items-center space-x-2">
+            <a href="/api/sample-template" download class="inline-flex items-center px-3.5 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 shadow-sm transition-all">
+                <i class="fa-solid fa-download mr-1.5 text-brand-600"></i> Download Template (.xlsx)
+            </a>
+        </div>
+    </div>
+
+    <!-- Sesi FastMoss Alert Banner -->
+    <div id="session-alert" class="hidden p-4 rounded-xl border bg-amber-50 border-amber-200 text-amber-800 flex items-start space-x-3">
+        <i class="fa-solid fa-triangle-exclamation text-amber-600 mt-0.5 text-lg"></i>
+        <div class="flex-1 text-sm">
+            <span class="font-bold">Perhatian Sesi FastMoss:</span>
+            <span id="session-msg" class="block text-xs mt-0.5">Memeriksa status sesi login FastMoss...</span>
+        </div>
+        <a href="/session" class="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-sm transition">
+            Login Sesi
+        </a>
+    </div>
+
+    <!-- Form Upload Job -->
+    <form id="job-form" action="/api/jobs" method="POST" enctype="multipart/form-data" class="space-y-6">
+        
+        <!-- Input Kreator: Tab Switcher (File vs Satuan / Teks) -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-900">1. Input Kreator FastMoss</label>
+                    <p class="text-xs text-slate-500 mt-0.5">Pilih mode: upload file Excel atau ketik/tempel nama kreator satuan langsung.</p>
+                </div>
+                <!-- Mode Switcher Tabs -->
+                <div class="inline-flex p-1 bg-slate-100 rounded-xl space-x-1 self-start sm:self-auto border border-slate-200">
+                    <button type="button" id="tab-btn-file" class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all bg-white text-brand-700 shadow-sm flex items-center space-x-1.5">
+                        <i class="fa-solid fa-file-excel text-emerald-600"></i>
+                        <span>Upload Excel / CSV</span>
+                    </button>
+                    <button type="button" id="tab-btn-manual" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900 flex items-center space-x-1.5">
+                        <i class="fa-solid fa-keyboard text-brand-600"></i>
+                        <span>Cari Satuan / Input Teks</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hidden field for input mode: 'file' or 'manual' -->
+            <input type="hidden" name="input_mode" id="input_mode" value="file">
+
+            <!-- TAB 1: UPLOAD FILE -->
+            <div id="tab-content-file" class="space-y-3">
+                <div id="drop-zone" class="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-xl p-8 text-center cursor-pointer transition-colors bg-slate-50/50 hover:bg-brand-50/20 group">
+                    <input type="file" id="file-input" name="file" accept=".xlsx,.xls,.csv" class="hidden">
+                    
+                    <div class="space-y-3">
+                        <div class="w-14 h-14 mx-auto rounded-full bg-brand-50 text-brand-600 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-file-excel"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-slate-700">Tarik & Jatuhkan file Excel/CSV di sini, atau <span class="text-brand-600 underline">Pilih File</span></p>
+                            <p class="text-xs text-slate-400 mt-1">Mendukung file .xlsx, .xls, .csv (Maksimal 500 nama kreator)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Validation Preview Card (Hidden by default) -->
+                <div id="preview-box" class="hidden mt-4 p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-circle-check text-emerald-500 text-base"></i>
+                            <span id="file-name" class="text-sm font-bold text-slate-800">file.xlsx</span>
+                        </div>
+                        <button type="button" id="btn-remove-file" class="text-xs text-rose-500 hover:underline font-medium">Ganti file</button>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                        <div class="p-2.5 bg-white rounded-lg border border-slate-100 shadow-xs">
+                            <div id="stat-total" class="text-lg font-bold text-slate-800">0</div>
+                            <div class="text-[11px] font-medium text-slate-400 uppercase">Total Baris</div>
+                        </div>
+                        <div class="p-2.5 bg-white rounded-lg border border-slate-100 shadow-xs">
+                            <div id="stat-valid" class="text-lg font-bold text-emerald-600">0</div>
+                            <div class="text-[11px] font-medium text-slate-400 uppercase">Nama Valid</div>
+                        </div>
+                        <div class="p-2.5 bg-white rounded-lg border border-slate-100 shadow-xs">
+                            <div id="stat-dup" class="text-lg font-bold text-amber-500">0</div>
+                            <div class="text-[11px] font-medium text-slate-400 uppercase">Duplikat Dibuang</div>
+                        </div>
+                        <div class="p-2.5 bg-white rounded-lg border border-slate-100 shadow-xs">
+                            <div id="stat-empty" class="text-lg font-bold text-slate-400">0</div>
+                            <div class="text-[11px] font-medium text-slate-400 uppercase">Baris Kosong</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: MANUAL / SATUAN INPUT -->
+            <div id="tab-content-manual" class="hidden space-y-3">
+                <div class="p-4 rounded-xl bg-slate-50/70 border border-slate-200 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <label for="creator_text" class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Ketik Nama atau ID TikTok Kreator
+                        </label>
+                        <span id="manual-counter" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">0 kreator</span>
+                    </div>
+                    <textarea name="creator_text" id="creator_text" rows="3" placeholder="Contoh: sirrah.fashion&#10;(Bisa masukkan 1 nama untuk cari satuan, atau beberapa kreator sekaligus pisahkan Enter/koma)" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-brand-500 focus:outline-none placeholder:text-slate-400 placeholder:font-normal bg-white"></textarea>
+                    <p class="text-[11px] text-slate-500 flex items-center space-x-1.5">
+                        <i class="fa-solid fa-circle-info text-brand-600"></i>
+                        <span>Ketik 1 nama kreator untuk scraping instan tanpa repot buat file Excel.</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Target Country & Periode Analisis -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <!-- Negara Target -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                <label class="block text-sm font-semibold text-slate-900">2. Pilih Negara Target</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label class="relative flex items-center p-4 rounded-xl border border-slate-200 cursor-pointer hover:border-brand-500 has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50/20 transition-all">
+                        <input type="radio" name="country" value="ID" class="text-brand-600 focus:ring-brand-500" checked>
+                        <div class="ml-3 flex items-center space-x-3">
+                            <span class="text-2xl">🇮🇩</span>
+                            <div>
+                                <span class="block text-sm font-bold text-slate-800">Indonesia (ID)</span>
+                                <span class="block text-xs text-slate-500">Mata uang Rupiah (Rp) · FastMoss ID</span>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="relative flex items-center p-4 rounded-xl border border-slate-200 cursor-pointer hover:border-brand-500 has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50/20 transition-all">
+                        <input type="radio" name="country" value="MY" class="text-brand-600 focus:ring-brand-500">
+                        <div class="ml-3 flex items-center space-x-3">
+                            <span class="text-2xl">🇲🇾</span>
+                            <div>
+                                <span class="block text-sm font-bold text-slate-800">Malaysia (MY)</span>
+                                <span class="block text-xs text-slate-500">Mata uang Ringgit (RM) · FastMoss MY</span>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Periode Video -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-900 mb-1">3. Periode Video FastMoss</label>
+                    <p class="text-xs text-slate-500 mb-2.5">Filter di tab <i>Daftar Video</i></p>
+                    <select name="period" class="w-full px-3.5 py-2.5 border-2 border-brand-500/50 rounded-xl text-sm bg-white font-bold text-slate-800 focus:border-brand-600 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <option value="7 Hari" selected>⚡ 7 Hari Terakhir (Default)</option>
+                        <option value="28 Hari">📅 28 Hari Terakhir</option>
+                        <option value="14 Hari">📅 14 Hari Terakhir</option>
+                        <option value="90 Hari">📅 90 Hari Terakhir</option>
+                    </select>
+                </div>
+                <div class="text-[11px] text-slate-600 bg-brand-50/50 p-2.5 rounded-xl border border-brand-100 flex items-center space-x-2">
+                    <i class="fa-solid fa-circle-check text-brand-600"></i>
+                    <span>Scraper otomatis klik tombol filter <b>7 Hari</b> di FastMoss.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Opsi Lanjutan (Collapsible) -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <button type="button" id="btn-toggle-advanced" class="w-full p-5 flex items-center justify-between text-left text-sm font-semibold text-slate-800 hover:bg-slate-50 transition">
+                <span class="flex items-center space-x-2">
+                    <i class="fa-solid fa-sliders text-brand-600"></i>
+                    <span>4. Opsi Lanjutan & Filter (Opsional)</span>
+                </span>
+                <i id="advanced-icon" class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
+            </button>
+
+            <div id="advanced-content" class="hidden p-6 pt-2 border-t border-slate-100 space-y-5 bg-slate-50/30">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Maksimal Video / Kreator</label>
+                        <input type="number" name="max_videos" value="50" min="5" max="200" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <span class="text-[11px] text-slate-400 mt-1 block">Default: 50 video teratas</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                            <span>Min. Pendapatan Video</span>
+                            <span id="currency-badge" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">MY: RM200</span>
+                        </label>
+                        <div class="relative">
+                            <input type="text" name="min_revenue" id="min_revenue_input" value="0" placeholder="Contoh: 200 (MY) atau 20jt (ID)" class="w-full pl-3 pr-12 py-2 border border-slate-300 rounded-lg text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <span id="currency-unit" class="absolute right-3 top-2.5 text-xs font-bold text-slate-500">RM</span>
+                        </div>
+                        <span class="text-[11px] text-slate-400 mt-1 block">Hanya video &ge; nilai ini di Sheet Utama (0 = ambil semua)</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Jeda Santai (Human-like)</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="number" name="min_delay" value="3.0" step="0.5" min="1" max="10" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-center">
+                            <span class="text-xs text-slate-400">s/d</span>
+                            <input type="number" name="max_delay" value="7.0" step="0.5" min="2" max="15" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-center">
+                            <span class="text-xs text-slate-400">detik</span>
+                        </div>
+                        <span class="text-[11px] text-slate-400 mt-1 block">Mencegah deteksi bot FastMoss</span>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-200/60 space-y-3">
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" name="filter_ad" value="1" checked class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+                        <div>
+                            <span class="text-sm font-semibold text-slate-800">Hanya Ambil Video Ber-label "AD" di Sheet Utama</span>
+                            <p class="text-xs text-slate-400">Video tanpa label AD tetap disimpan terpisah di sheet 'Video Lainnya'</p>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" name="filter_bawahan" value="1" checked class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+                        <div>
+                            <span class="text-sm font-semibold text-slate-800">Hanya Produk Kategori "Bawahan Wanita" di Sheet Utama</span>
+                            <p class="text-xs text-slate-400">Pakaian & Pakaian Dalam Wanita > Bawahan Wanita (Rok, Celana, Jeans, Kulot, Legging, dll)</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="pt-2">
+            <button type="submit" id="btn-submit" class="w-full py-4 px-6 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-700 hover:to-indigo-700 text-white rounded-xl font-bold text-base shadow-lg shadow-brand-500/25 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none">
+                <i class="fa-solid fa-play"></i>
+                <span>Mulai Scraping FastMoss</span>
+            </button>
+        </div>
+
+    </form>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const previewBox = document.getElementById('preview-box');
+    const btnRemoveFile = document.getElementById('btn-remove-file');
+    const btnSubmit = document.getElementById('btn-submit');
+    const sessionAlert = document.getElementById('session-alert');
+    const sessionMsg = document.getElementById('session-msg');
+
+    // Advanced Options Toggle
+    const btnToggle = document.getElementById('btn-toggle-advanced');
+    const advContent = document.getElementById('advanced-content');
+    const advIcon = document.getElementById('advanced-icon');
+
+    btnToggle.addEventListener('click', () => {
+        advContent.classList.toggle('hidden');
+        advIcon.classList.toggle('rotate-180');
+    });
+
+    // Country & Min Revenue Synchronization
+    const countryRadios = document.querySelectorAll('input[name="country"]');
+    const minRevInput = document.getElementById('min_revenue_input');
+    const currencyUnit = document.getElementById('currency-unit');
+    const currencyBadge = document.getElementById('currency-badge');
+
+    let userManuallyChangedMinRev = false;
+    if (minRevInput) {
+        minRevInput.addEventListener('input', () => {
+            userManuallyChangedMinRev = true;
+        });
+    }
+
+    function updateRevenueControls(country) {
+        if (!currencyUnit || !currencyBadge || !minRevInput) return;
+        if (country === 'MY') {
+            currencyUnit.textContent = 'RM';
+            currencyBadge.textContent = 'MY: RM (Ringgit)';
+            currencyBadge.className = 'text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800';
+            if (!userManuallyChangedMinRev || minRevInput.value === '0' || minRevInput.value === '20.000.000' || minRevInput.value === '20jt') {
+                minRevInput.value = '200';
+            }
+            minRevInput.placeholder = 'Contoh: 200 atau 50';
+        } else {
+            currencyUnit.textContent = 'Rp';
+            currencyBadge.textContent = 'ID: Rp (Rupiah)';
+            currencyBadge.className = 'text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800';
+            if (!userManuallyChangedMinRev || minRevInput.value === '200' || minRevInput.value === '0') {
+                minRevInput.value = '20.000.000';
+            }
+            minRevInput.placeholder = 'Contoh: 20jt atau 20.000.000';
+        }
+    }
+
+    countryRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                updateRevenueControls(e.target.value);
+            }
+        });
+    });
+
+    // Initial sync
+    const currentSelected = document.querySelector('input[name="country"]:checked');
+    if (currentSelected) {
+        updateRevenueControls(currentSelected.value);
+    }
+
+    // Check FastMoss Session
+    fetch('/api/session/status')
+        .then(r => r.json())
+        .then(data => {
+            if (!data.is_valid) {
+                sessionAlert.classList.remove('hidden');
+                sessionMsg.textContent = data.message || "Sesi belum aktif atau kadaluarsa. Silakan lakukan login manual terlebih dahulu.";
+            }
+        })
+        .catch(err => console.error(err));
+
+    // File Selection Trigger
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-brand-500', 'bg-brand-50/30');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('border-brand-500', 'bg-brand-50/30');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-brand-500', 'bg-brand-50/30');
+        if (e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            handleFileChange();
+        }
+    });
+
+    fileInput.addEventListener('change', handleFileChange);
+
+    btnRemoveFile.addEventListener('click', () => {
+        fileInput.value = '';
+        previewBox.classList.add('hidden');
+        dropZone.classList.remove('hidden');
+    });
+
+    function handleFileChange() {
+        if (!fileInput.files.length) return;
+        const file = fileInput.files[0];
+        document.getElementById('file-name').textContent = file.name;
+
+        // Auto validate via API
+        const formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/api/validate-file', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                document.getElementById('stat-total').textContent = res.stats.total_initial;
+                document.getElementById('stat-valid').textContent = res.stats.valid_count;
+                document.getElementById('stat-dup').textContent = res.stats.duplicates_removed;
+                document.getElementById('stat-empty').textContent = res.stats.empty_rows_removed;
+                
+                dropZone.classList.add('hidden');
+                previewBox.classList.remove('hidden');
+            } else {
+                alert('File bermasalah: ' + (res.error || 'Format tidak valid'));
+                fileInput.value = '';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Gagal memvalidasi file.');
+        });
+    }
+
+    // Tabs Switcher: File vs Satuan / Teks Input
+    const tabBtnFile = document.getElementById('tab-btn-file');
+    const tabBtnManual = document.getElementById('tab-btn-manual');
+    const tabContentFile = document.getElementById('tab-content-file');
+    const tabContentManual = document.getElementById('tab-content-manual');
+    const inputMode = document.getElementById('input_mode');
+    const creatorText = document.getElementById('creator_text');
+    const manualCounter = document.getElementById('manual-counter');
+
+    function setInputMode(mode) {
+        inputMode.value = mode;
+        if (mode === 'file') {
+            tabBtnFile.className = "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all bg-white text-brand-700 shadow-sm flex items-center space-x-1.5";
+            tabBtnManual.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900 flex items-center space-x-1.5";
+            tabContentFile.classList.remove('hidden');
+            tabContentManual.classList.add('hidden');
+        } else {
+            tabBtnManual.className = "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all bg-white text-brand-700 shadow-sm flex items-center space-x-1.5";
+            tabBtnFile.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900 flex items-center space-x-1.5";
+            tabContentManual.classList.remove('hidden');
+            tabContentFile.classList.add('hidden');
+            if (creatorText) creatorText.focus();
+        }
+    }
+
+    if (tabBtnFile && tabBtnManual) {
+        tabBtnFile.addEventListener('click', () => setInputMode('file'));
+        tabBtnManual.addEventListener('click', () => setInputMode('manual'));
+    }
+
+    if (creatorText) {
+        creatorText.addEventListener('input', () => {
+            const raw = creatorText.value.trim();
+            if (!raw) {
+                manualCounter.textContent = '0 kreator';
+                manualCounter.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700';
+                return;
+            }
+            const items = raw.split(/[\r\n,]+/).map(s => s.trim().replace(/^@/, '')).filter(s => s.length > 0);
+            const count = items.length;
+            manualCounter.textContent = count + ' kreator terdeteksi';
+            manualCounter.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand-100 text-brand-800';
+        });
+    }
+
+    // Submit Validation & Loading
+    document.getElementById('job-form').addEventListener('submit', (e) => {
+        if (inputMode.value === 'file') {
+            if (!fileInput.files.length) {
+                e.preventDefault();
+                alert('Silakan pilih atau unggah file Excel/CSV terlebih dahulu, atau beralih ke tab "Cari Satuan / Input Teks".');
+                return;
+            }
+        } else {
+            const txt = (creatorText.value || '').trim();
+            if (!txt) {
+                e.preventDefault();
+                alert('Silakan masukkan minimal 1 nama atau ID TikTok kreator.');
+                creatorText.focus();
+                return;
+            }
+        }
+
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Membuat Job...</span>';
+    });
+</script>
+{% endblock %}
+

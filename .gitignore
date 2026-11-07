@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.venv/
+venv/
+ENV/
+
+# Scratch & Debug
+scratch/
+*.png
+*.log
+
+# Databases & Local Storage
+storage/*.db
+storage/sessions/*.json
+storage/outputs/*
+!storage/outputs/.gitkeep
+storage/uploads/*
+!storage/uploads/.gitkeep
+storage/logs/*
+!storage/logs/.gitkeep
+storage/screenshots/*
+!storage/screenshots/.gitkeep
+storage/sessions/*
+!storage/sessions/.gitkeep
+
+# Testing & IDEs
+.pytest_cache/
+.coverage
+htmlcov/
+.idea/
+.vscode/
+.DS_Store

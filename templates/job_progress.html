@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Progres Job {{ job.id }} - FastMoss Scraper{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Top Status Bar -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center space-x-3">
+                <h1 class="text-xl font-bold text-slate-900 tracking-tight">Progres Scraping: {{ job.id }}</h1>
+                <span id="badge-job-status" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider
+                    {% if job.status == 'completed' %}bg-emerald-100 text-emerald-800
+                    {% elif job.status == 'running' %}bg-blue-100 text-blue-800 animate-pulse
+                    {% elif job.status == 'paused' %}bg-amber-100 text-amber-800
+                    {% elif job.status == 'failed' %}bg-rose-100 text-rose-800
+                    {% else %}bg-slate-100 text-slate-800{% endif %}">
+                    {{ job.status }}
+                </span>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">
+                File: <span class="font-medium text-slate-700">{{ job.filename }}</span> · 
+                Negara: <span class="font-medium text-slate-700">{{ job.country }}</span> · 
+                {% if job.config_dict and job.config_dict.get('min_revenue') %}
+                Min. Pendapatan: <span class="font-semibold text-emerald-700">{% if job.country == 'MY' %}RM{% else %}Rp{% endif %} {{ "{:,.0f}".format(job.config_dict.get('min_revenue')) }}</span> · 
+                {% endif %}
+                Dibuat: <span class="text-slate-600">{{ job.created_at }}</span>
+            </p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center space-x-2">
+            <button id="btn-pause" onclick="pauseJob()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-xs transition flex items-center space-x-1.5 {% if job.status != 'running' %}hidden{% endif %}">
+                <i class="fa-solid fa-pause"></i> <span>Jeda</span>
+            </button>
+            <button id="btn-resume" onclick="resumeJob()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center space-x-1.5 {% if job.status != 'paused' %}hidden{% endif %}">
+                <i class="fa-solid fa-play"></i> <span>Lanjutkan</span>
+            </button>
+            <button id="btn-cancel" onclick="cancelJob()" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold shadow-xs transition flex items-center space-x-1.5 {% if job.status in ['completed', 'cancelled', 'failed'] %}hidden{% endif %}">
+                <i class="fa-solid fa-stop"></i> <span>Batalkan</span>
+            </button>
+            <a id="btn-download" href="/download/{{ job.id }}" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-emerald-500/20 transition flex items-center space-x-1.5 {% if not job.output_path %}hidden{% endif %}">
+                <i class="fa-solid fa-file-excel"></i> <span>Unduh Hasil Excel</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Error / Session Broken Banner -->
+    <div id="job-error-banner" class="{% if not job.error_message %}hidden{% endif %} p-4 rounded-xl border bg-rose-50 border-rose-200 text-rose-800 flex items-start space-x-3">
+        <i class="fa-solid fa-triangle-exclamation text-rose-600 mt-0.5 text-lg"></i>
+        <div class="flex-1 text-sm">
+            <span class="font-bold">Peringatan Job / Sesi:</span>
+            <span id="job-error-text" class="block text-xs mt-0.5">{{ job.error_message }}</span>
+        </div>
+        <a href="/session" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow-sm transition">
+            Periksa Sesi
+        </a>
+    </div>
+
+    <!-- Progress Card -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex items-center justify-between text-sm">
+            <div>
+                <span class="text-slate-500">Progres Kreator: </span>
+                <span id="progress-text" class="font-bold text-slate-800">{{ job.completed_creators }} / {{ job.total_creators }}</span>
+            </div>
+            <div>
+                <span id="progress-percent" class="font-bold text-brand-600">
+                    {% if job.total_creators > 0 %}{{ (job.completed_creators / job.total_creators * 100)|round(1) }}%{% else %}0%{% endif %}
+                </span>
+            </div>
+        </div>
+
+        <!-- Progress Bar Track -->
+        <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+            <div id="progress-bar-fill" class="h-full bg-gradient-to-r from-brand-600 to-indigo-600 transition-all duration-500 rounded-full"
+                style="width: {% if job.total_creators > 0 %}{{ (job.completed_creators / job.total_creators * 100) }}%{% else %}0%{% endif %};">
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between text-xs text-slate-400">
+            <span><i class="fa-solid fa-shield-halved text-emerald-500 mr-1"></i> Mode: Jeda Aman & Penungguan Elemen Tuntas</span>
+            <span id="status-live-indicator" class="flex items-center space-x-1.5 text-blue-600 font-medium">
+                <span class="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
+                <span>Streaming status realtime...</span>
+            </span>
+        </div>
+    </div>
+
+    <!-- Tabel Realtime Kreator -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-5 border-b border-slate-200 flex items-center justify-between">
+            <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Daftar Status Kreator</h2>
+            <span class="text-xs text-slate-400">Total: {{ job.total_creators }} kreator</span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                    <tr class="bg-slate-50/70 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
+                        <th class="py-3 px-4 w-12 text-center">#</th>
+                        <th class="py-3 px-4">Nama Kreator</th>
+                        <th class="py-3 px-4 w-24 text-center">Negara</th>
+                        <th class="py-3 px-4 w-36 text-center">Status</th>
+                        <th class="py-3 px-4 text-right">Video (Periode)</th>
+                        <th class="py-3 px-4 text-right">Video AD</th>
+                        <th class="py-3 px-4 text-right">Total Penjualan</th>
+                        <th class="py-3 px-4 text-right w-24">Durasi</th>
+                        <th class="py-3 px-4">Catatan / Detail</th>
+                    </tr>
+                </thead>
+                <tbody id="creator-rows" class="divide-y divide-slate-100">
+                    {% for item in job.creator_items or job['items'] %}
+                    <tr id="row-{{ loop.index }}" class="hover:bg-slate-50/60 transition-colors {% if item.status == 'sedang diproses' %}bg-blue-50/50{% endif %}">
+                        <td class="py-3 px-4 text-center text-slate-400 font-mono">{{ loop.index }}</td>
+                        <td class="py-3 px-4 font-bold text-slate-800">{{ item.creator_name }}</td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold {% if item.country == 'ID' %}bg-red-50 text-red-700{% else %}bg-blue-50 text-blue-700{% endif %}">
+                                {{ item.country }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="status-badge px-2.5 py-1 rounded-full text-[11px] font-bold inline-block
+                                {% if item.status == 'selesai' %}bg-emerald-100 text-emerald-800
+                                {% elif item.status == 'tanpa video' %}bg-amber-100 text-amber-800
+                                {% elif item.status == 'tidak ditemukan' %}bg-orange-100 text-orange-800
+                                {% elif item.status == 'ambigu' %}bg-slate-200 text-slate-700
+                                {% elif item.status == 'gagal' %}bg-rose-100 text-rose-800
+                                {% elif item.status == 'sedang diproses' %}bg-blue-100 text-blue-800 animate-pulse
+                                {% else %}bg-slate-100 text-slate-500{% endif %}">
+                                {{ item.status }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-right font-medium text-slate-700">{{ item.video_count }}</td>
+                        <td class="py-3 px-4 text-right">
+                            {% if item.ad_count > 0 %}
+                            <span class="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold rounded">{{ item.ad_count }}</span>
+                            {% else %}
+                            <span class="text-slate-400">0</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 text-right font-medium text-slate-700">{{ item.total_sales }}</td>
+                        <td class="py-3 px-4 text-right text-slate-500">{{ item.duration_seconds }}s</td>
+                        <td class="py-3 px-4 text-slate-500 truncate max-w-xs" title="{{ item.notes or '' }}">{{ item.notes or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const jobId = "{{ job.id }}";
+
+    function pauseJob() {
+        fetch(`/api/jobs/${jobId}/pause`, { method: 'POST' })
+            .then(r => r.json())
+            .then(() => location.reload());
+    }
+
+    function resumeJob() {
+        fetch(`/api/jobs/${jobId}/resume`, { method: 'POST' })
+            .then(r => r.json())
+            .then(() => location.reload());
+    }
+
+    function cancelJob() {
+        if (!confirm('Yakin ingin membatalkan scraping job ini? Hasil kreator yang sudah selesai tetap dapat diunduh.')) return;
+        fetch(`/api/jobs/${jobId}/cancel`, { method: 'POST' })
+            .then(r => r.json())
+            .then(() => location.reload());
+    }
+
+    // Auto poll / refresh status jika job masih berjalan
+    let currentStatus = "{{ job.status }}";
+    if (currentStatus === 'running' || currentStatus === 'pending') {
+        const interval = setInterval(() => {
+            fetch(`/api/jobs/${jobId}`)
+                .then(r => r.json())
+                .then(res => {
+                    if (res && res.job) {
+                        const job = res.job;
+                        // Update Progress Text & Bar
+                        document.getElementById('progress-text').textContent = `${job.completed_creators} / ${job.total_creators}`;
+                        const pct = job.total_creators > 0 ? ((job.completed_creators / job.total_creators) * 100).toFixed(1) : 0;
+                        document.getElementById('progress-percent').textContent = `${pct}%`;
+                        document.getElementById('progress-bar-fill').style.width = `${pct}%`;
+
+                        // Update Status Badge
+                        const badge = document.getElementById('badge-job-status');
+                        badge.textContent = job.status;
+
+                        // Update Live Creator Rows
+                        if (job.items && Array.isArray(job.items)) {
+                            job.items.forEach((item, idx) => {
+                                const row = document.getElementById(`row-${idx + 1}`);
+                                if (row) {
+                                    const statusBadge = row.querySelector('.status-badge');
+                                    if (statusBadge) {
+                                        statusBadge.textContent = item.status;
+                                        statusBadge.className = 'status-badge px-2.5 py-1 rounded-full text-[11px] font-bold inline-block ';
+                                        if (item.status === 'selesai') statusBadge.className += 'bg-emerald-100 text-emerald-800';
+                                        else if (item.status === 'tanpa video') statusBadge.className += 'bg-amber-100 text-amber-800';
+                                        else if (item.status === 'tidak ditemukan') statusBadge.className += 'bg-orange-100 text-orange-800';
+                                        else if (item.status === 'ambigu') statusBadge.className += 'bg-slate-200 text-slate-700';
+                                        else if (item.status === 'gagal') statusBadge.className += 'bg-rose-100 text-rose-800';
+                                        else if (item.status === 'sedang diproses') statusBadge.className += 'bg-blue-100 text-blue-800 animate-pulse';
+                                        else statusBadge.className += 'bg-slate-100 text-slate-500';
+                                    }
+                                    if (item.status === 'sedang diproses') row.classList.add('bg-blue-50/50');
+                                    else row.classList.remove('bg-blue-50/50');
+
+                                    const cells = row.querySelectorAll('td');
+                                    if (cells.length >= 8) {
+                                        cells[4].textContent = item.video_count || 0;
+                                        if (item.ad_count > 0) {
+                                            cells[5].innerHTML = `<span class="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold rounded">${item.ad_count}</span>`;
+                                        } else {
+                                            cells[5].innerHTML = `<span class="text-slate-400">0</span>`;
+                                        }
+                                        cells[6].textContent = item.total_sales || 0;
+                                        cells[7].textContent = (item.duration_seconds ? item.duration_seconds + 's' : '0s');
+                                        cells[8].textContent = item.notes || '-';
+                                        cells[8].title = item.notes || '';
+                                    }
+                                }
+                            });
+                        }
+
+                        // Check if completed
+                        if (job.status === 'completed' || job.status === 'cancelled' || job.status === 'failed') {
+                            clearInterval(interval);
+                            location.reload();
+                        }
+                    }
+                })
+                .catch(err => console.error(err));
+        }, 4000);
+    }
+</script>
+{% endblock %}
+

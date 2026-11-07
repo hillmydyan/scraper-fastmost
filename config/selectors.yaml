@@ -1,0 +1,69 @@
+# FastMoss UI Selectors Configuration
+# Versi FastMoss: 2026
+
+urls:
+  base: "https://www.fastmoss.com"
+  search_creator: "https://www.fastmoss.com/id/influencer/search"
+  creator_detail: "https://www.fastmoss.com/id/influencer/detail/{creator_id}"
+  product_detail: "https://www.fastmoss.com/id/e-commerce/detail/{product_id}"
+  dashboard: "https://www.fastmoss.com/id/dashboard"
+  login: "https://www.fastmoss.com/id"
+
+navigation:
+  country_dropdown:
+    trigger: "button:has-text('Malaysia'), button:has-text('Indonesia'), [class*='region'], [class*='country']"
+    option_id: "Indonesia"
+    option_my: "Malaysia"
+  
+search:
+  # Input nama pengguna / nickname / UID
+  input: "input.search-bar-v3_input__B62sP, input[placeholder*='nickname' i], input[placeholder*='nama pengguna' i], input[placeholder*='UID' i], input.search-input"
+  search_button: "button.search-btn, button[class*='search'], .search-box button"
+  # Tabel hasil pencarian kreator
+  result_table: "table, .ant-table-tbody, tbody"
+  result_row: "tbody tr:has(a[href*='/influencer/detail/']), .ant-table-row:has(a[href*='/influencer/detail/']), tbody tr"
+  # Elemen dalam baris hasil
+  nickname: ".nickname, .influencer-name, a[href*='/influencer/detail/']"
+  tiktok_id: ".tiktok-id, .unique-id, [class*='uniqueId'], span:has-text('ID:'), span:has-text('@')"
+  detail_link: "a[href*='/influencer/detail/']"
+
+creator_detail:
+  header_nickname: "h1, .nickname, [class*='header'] [class*='nickname'], .author-name"
+  header_tiktok_id: "[class*='uniqueId'], .tiktok-id, span:has-text('ID:')"
+  
+  # Tab Analisis Video
+  tab_video_analysis: "span:text-is('Video'), div:text-is('Video'), button:text-is('Video'), text='Video'"
+  
+  # Filter periode 7 Hari
+  filter_7_days: "button:text-is('7 Hari'), span:text-is('7 Hari'), div:text-is('7 Hari')"
+  
+  # Header kolom Penjualan Video untuk sort descending
+  sort_video_sales: "th:has-text('Penjualan Video'), .th-cell:has-text('Penjualan Video')"
+  
+  # Tabel video
+  video_table: "table:has(th:has-text('Penjualan Video')), .ant-table-content table, table"
+  video_row: "table:has(th:has-text('Penjualan Video')) tbody tr, tbody tr"
+  empty_state: ".ant-table-placeholder, [class*='placeholder'], text='Tidak Ada Data', .empty-data, .el-empty"
+
+video_row_elements:
+  thumbnail: "img[src*='video'], img[src*='tiktok'], .video-cover img, .cover img, img"
+  video_link: "a[href*='tiktok.com'], a[href*='/video/'], .video-title a, a.cover-link, a"
+  ad_badge: ".ad-badge, [class*='ad-tag'], span:has-text('AD'), img[alt*='AD'], [class*='badge']:has-text('AD')"
+  duration: ".duration, span:has-text('Durasi:'), span:has-text('s')"
+  release_time: ".release-time, td:nth-child(2), [class*='publish-time']"
+  video_type: ".video-type, [class*='videoType']"
+  sales_units: ".sales-count, [class*='sales-num'], td[class*='sales']"
+  sales_amount: ".sales-amount, [class*='sales-money'], td[class*='amount']"
+  views: ".view-count, [class*='play-count'], td[class*='views']"
+  interaction_rate: ".interaction-rate, [class*='interact'], td[class*='rate']"
+  product_column: ".product-cell, td:last-child, [class*='product-info']"
+  product_name: ".product-name, [class*='product-title'], a[title]"
+  product_link: "a[href*='/e-commerce/detail/'], a[href*='/product/']"
+
+product_detail:
+  breadcrumb: ".breadcrumb, .breadcrumb-item, .ant-breadcrumb, [class*='category-path'], [class*='breadcrumb']"
+  category_label: ".category-text, [class*='category'], .goods-category"
+
+session_verification:
+  user_profile: ".user-info, .profile-name, .header-avatar, [class*='username'], [class*='user-name']"
+  pro_badge: ".vip-tag, .pro-badge, span:has-text('Versi Profesional'), span:has-text('Pro')"

@@ -1,0 +1,13 @@
+# Konfigurasi Notifikasi Admin (Telegram / WhatsApp)
+# PRD Bagian 7 & 9
+
+telegram:
+  enabled: false
+  bot_token: "" # Masukkan bot token telegram, e.g. "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+  chat_id: ""   # Masukkan chat id tujuan, e.g. "987654321"
+
+whatsapp:
+  enabled: false
+  webhook_url: "" # Webhook URL WhatsApp Gateway (misal Fonnte / Wablas / Waha)
+  phone_number: "0811789436" # Nomor kantor sesuai catatan PRD
+
