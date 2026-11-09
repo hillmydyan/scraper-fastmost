@@ -80,18 +80,39 @@ class CategoryChecker:
         return False
 
     def check_keyword_fallback(self, product_name: str, country: str = "ID") -> Tuple[bool, str]:
-        """Fallback pengecekan berdasarkan kata kunci nama produk"""
+        """Fallback pengecekan cerdas berdasarkan kata kunci nama produk (dengan filter eksklusi atasan & pria)"""
         if not product_name:
             return False, ""
 
-        name_clean = product_name.lower()
+        name_clean = product_name.lower().strip()
+
+        # 1. Eksklusi produk pria / lelaki
+        exclude_gender = self.config.get("exclude_gender_keywords", ["pria", "lelaki", "men", "man", "cowok"])
+        for g in exclude_gender:
+            if re.search(rf"\b{re.escape(g)}\b", name_clean):
+                if not any(re.search(rf"\b{w}\b", name_clean) for w in ["wanita", "women", "perempuan", "cewek", "muslimah"]):
+                    return False, ""
+
+        # 2. Eksklusi produk atasan, baju, dress, baju kurung, dsb
+        exclude_tops = self.config.get("exclude_keywords", [])
+        for top in exclude_tops:
+            if re.search(rf"\b{re.escape(top)}\b", name_clean):
+                # Jika judul diawali dengan atasan (misal "Baju-T...", "Cardigan...", "Sweater...", "Jaket...")
+                if re.search(rf"^(?:[\w\s]{{0,15}})?\b{re.escape(top)}\b", name_clean):
+                    return False, ""
+                # Jika frasa atasan mendahului kata bawahan (misal "jaket jeans", "kemeja jeans")
+                if any(f"{top} {bot}" in name_clean for bot in ["jeans", "seluar", "celana"]):
+                    return False, ""
+
+        # 3. Pencocokan kata kunci bawahan wanita
         fallback_cfg = self.config.get("fallback_keywords", {})
-        
         country_key = "malaysia" if country.upper() == "MY" else "indonesia"
         keywords = fallback_cfg.get(country_key, [])
-        # Juga sertakan kata kunci indonesia bila negara MY untuk toleransi bahasa serumpun
         if country_key == "malaysia":
             keywords = list(set(keywords + fallback_cfg.get("indonesia", [])))
+
+        # Urutkan dari keyword terpanjang dulu (e.g. 'seluar jeans' sebelum 'jeans')
+        keywords = sorted(keywords, key=len, reverse=True)
 
         for kw in keywords:
             pattern = rf"(?:\b|_){re.escape(kw.lower())}(?:\b|_)"
