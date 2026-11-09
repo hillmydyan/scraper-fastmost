@@ -359,11 +359,12 @@ class FastMossScraper:
         method = "breadcrumb"
 
         if product_id:
+            prod_page = None
             try:
                 prod_page = context.new_page()
                 prod_url = f"https://www.fastmoss.com/{country.lower()}/e-commerce/detail/{product_id}"
                 prod_page.goto(prod_url, timeout=25000, wait_until="domcontentloaded")
-                self._sleep_random(2.0, 3.5)
+                self._sleep_random(1.5, 2.5)
 
                 bc_sel = self.selectors.get("product_detail", {}).get("breadcrumb", ".breadcrumb, [class*='category-path']")
                 bc_elems = prod_page.locator(bc_sel)
@@ -377,10 +378,14 @@ class FastMossScraper:
                         l2 = parts[1]
                     if len(parts) >= 3:
                         l3 = parts[2]
-
-                prod_page.close()
             except Exception as e:
                 logger.warning(f"Gagal memuat detail produk {product_id}: {e}")
+            finally:
+                if prod_page:
+                    try:
+                        prod_page.close()
+                    except Exception:
+                        pass
 
         is_bawahan = self.category_checker.check_hierarchy(l1, l2, l3)
 
