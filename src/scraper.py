@@ -59,6 +59,42 @@ class FastMossScraper:
         except Exception:
             pass
 
+    def handle_login_modal_if_present(self, page: Page, context: Optional[BrowserContext] = None, timeout_seconds: int = 120) -> bool:
+        """
+        Deteksi apakah muncul modal popup 'Masuk' FastMoss.
+        Jika muncul di noVNC / layar lokal, beri waktu user untuk memasukkan password & captcha.
+        Setelah user berhasil login (modal hilang), otomatis simpan context.storage_state()!
+        """
+        try:
+            modal = page.locator(".ant-modal:has-text('Masuk'), .ant-modal:has(input[type='password']), div[class*='modal']:has-text('Masuk')").first
+            if modal.count() > 0 and modal.is_visible():
+                logger.warning(
+                    f"[LOGIN DIPERLUKAN] Muncul modal 'Masuk' FastMoss di browser! "
+                    f"Menunggu hingga {timeout_seconds} detik untuk input password & verifikasi di noVNC/layar..."
+                )
+                start_w = time.time()
+                while time.time() - start_w < timeout_seconds:
+                    time.sleep(2)
+                    if modal.count() == 0 or not modal.is_visible():
+                        logger.info("Modal 'Masuk' telah tertutup/selesai! Memverifikasi status login...")
+                        self._sleep_random(2.0, 3.0)
+                        if context and self.storage_state_path:
+                            try:
+                                self.storage_state_path.parent.mkdir(parents=True, exist_ok=True)
+                                context.storage_state(path=str(self.storage_state_path))
+                                logger.info(f"Sesi baru berhasil disimpan ke '{self.storage_state_path}'!")
+                            except Exception as save_err:
+                                logger.warning(f"Gagal auto-save storage_state: {save_err}")
+                        return True
+
+                logger.error("[TIMEOUT] Waktu tunggu login habis. Modal login masih terbuka.")
+                raise SessionExpiredException("Sesi FastMoss tidak aktif (muncul popup Masuk yang belum diselesaikan).")
+        except SessionExpiredException:
+            raise
+        except Exception as e:
+            logger.debug(f"Pengecekan modal login: {e}")
+        return False
+
     def _sleep_random(self, min_s: float = 3.0, max_s: float = 7.0):
         """Jeda santai human-like sesuai prinsip 'asal benar & stabil'"""
         duration = random.uniform(min_s, max_s)
@@ -116,7 +152,7 @@ class FastMossScraper:
             return int(match_sec.group(1))
         return None
 
-    def search_creator(self, page: Page, creator_name: str, country: str = "id") -> Tuple[str, Dict]:
+    def search_creator(self, page: Page, creator_name: str, country: str = "id", context: Optional[BrowserContext] = None) -> Tuple[str, Dict]:
         """
         Cari kreator di FastMoss:
         Prioritas:
@@ -136,6 +172,7 @@ class FastMossScraper:
                 self._sleep_random(2.0, 4.0)
 
             self.check_page_session(page)
+            self.handle_login_modal_if_present(page, context=context)
 
             # Cek & sesuaikan tombol negara (Indonesia / Malaysia)
             try:
@@ -395,6 +432,9 @@ class FastMossScraper:
         logger.info(f"Navigasi ke detail analitik video kreator: {target_url}")
         page.goto(target_url, timeout=40000, wait_until="domcontentloaded")
         self._sleep_random(3.0, 4.5)
+
+        self.check_page_session(page)
+        self.handle_login_modal_if_present(page, context=context)
 
         # Klik tab Analisis Video jika ada di header lengket
         try:
@@ -693,8 +733,7 @@ class FastMossScraper:
             browser = p.chromium.launch(**launch_kwargs)
             
             context_kwargs = {
-                "viewport": {"width": 1440, "height": 900},
-                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+                "viewport": {"width": 1440, "height": 900}
             }
             if self.storage_state_path.exists():
                 context_kwargs["storage_state"] = str(self.storage_state_path)

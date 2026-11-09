@@ -326,7 +326,7 @@ class JobManager:
 
                     for attempt in range(1, 4):
                         try:
-                            status_search, info = scraper.search_creator(page, c_name, c_input.negara)
+                            status_search, info = scraper.search_creator(page, c_name, c_input.negara, context=context)
                             item_status = status_search
                             notes = info.get("catatan", "")
 
