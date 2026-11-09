@@ -236,11 +236,10 @@ class JobManager:
         scraper = FastMossScraper()
         session_mgr = SessionManager()
 
-        # Cek sesi sebelum mulai
+        # Cek ketersediaan file sesi sebelum mulai
         notifier = Notifier()
-        is_valid, msg = session_mgr.validate_session(country=config.country)
-        if not is_valid:
-            error_text = f"Sesi FastMoss tidak valid: {msg}. Menunggu login admin."
+        if not session_mgr.has_session_file():
+            error_text = "File sesi FastMoss (storage_state.json) belum ditemukan. Silakan login terlebih dahulu via menu Sesi."
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute("""
                     UPDATE jobs SET status = 'paused', error_message = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
@@ -434,6 +433,10 @@ class JobManager:
 
                     scraper._sleep_random(config.min_delay, config.max_delay)
 
+                try:
+                    context.storage_state(path=str(scraper.storage_state_path))
+                except Exception:
+                    pass
                 browser.close()
 
             # Buat file Excel hasil jika ada data

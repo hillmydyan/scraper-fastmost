@@ -407,16 +407,21 @@ class FastMossScraper:
 
         # Scroll ke bagian Daftar Video agar elemen ter-render sempurna
         try:
-            dv = page.locator("text='Daftar Video'").first
+            dv = page.locator("xpath=//*[text()='Daftar Video']").first
+            try:
+                dv.wait_for(state="attached", timeout=12000)
+            except Exception:
+                pass
             if dv.count() > 0:
                 dv.scroll_into_view_if_needed()
-                self._sleep_random(1.0, 1.8)
+                self._sleep_random(1.5, 2.5)
             else:
-                for _ in range(5):
+                for _ in range(6):
                     page.mouse.wheel(0, 800)
                     self._sleep_random(0.4, 0.7)
-                    if page.locator("text='Daftar Video'").count() > 0:
-                        page.locator("text='Daftar Video'").first.scroll_into_view_if_needed()
+                    if page.locator("xpath=//*[text()='Daftar Video']").count() > 0:
+                        page.locator("xpath=//*[text()='Daftar Video']").first.scroll_into_view_if_needed()
+                        self._sleep_random(1.5, 2.0)
                         break
         except Exception:
             pass
@@ -435,19 +440,40 @@ class FastMossScraper:
         # Pilih filter periode pada Daftar Video (default: 7 Hari, atau 28 Hari, 14 Hari, 90 Hari)
         logger.info(f"Memilih periode analitik video: '{target_period}'")
         try:
-            btn_period = page.locator(
-                f"xpath=//*[text()='Daftar Video']/ancestor::div[contains(@class, 'flex')][1]//label[.//span[text()='{target_period}']] | "
-                f"//*[text()='Daftar Video']/..//label[.//span[text()='{target_period}']] | "
-                f"//*[text()='Daftar Video']/following::div[contains(@class, 'ant-radio-group')][1]//label[.//span[text()='{target_period}']]"
-            ).first
-            if btn_period.count() > 0 and btn_period.is_visible():
-                btn_period.click()
-                self._sleep_random(2.5, 4.0)
+            period_locators = [
+                page.locator(f"xpath=//*[text()='Daftar Video']/ancestor::div[contains(@class, 'flex')][1]//label[.//span[text()='{target_period}']]").first,
+                page.locator(f"xpath=//*[text()='Daftar Video']/following::div[contains(@class, 'ant-radio-group')][1]//label[.//span[text()='{target_period}']]").first,
+                page.locator(f"xpath=//*[text()='Daftar Video']/..//label[.//span[text()='{target_period}']]").first,
+                page.locator(f"xpath=//*[text()='Daftar Video']/following::*//label[contains(@class, 'ant-radio-button-wrapper')]").filter(has_text=target_period).first
+            ]
+
+            target_btn = None
+            for loc in period_locators:
+                if loc.count() > 0:
+                    try:
+                        loc.wait_for(state="visible", timeout=4000)
+                        if loc.is_visible():
+                            target_btn = loc
+                            break
+                    except Exception:
+                        pass
+
+            if target_btn and target_btn.is_visible():
+                target_btn.scroll_into_view_if_needed()
+                btn_cls = target_btn.get_attribute("class") or ""
+                if "ant-radio-button-wrapper-checked" not in btn_cls:
+                    logger.info(f"Mengklik tombol filter periode '{target_period}' pada Daftar Video...")
+                    target_btn.click()
+                    self._sleep_random(2.0, 3.5)
+                    # Double-check apakah status sudah checked, jika belum klik ulang
+                    btn_cls = target_btn.get_attribute("class") or ""
+                    if "ant-radio-button-wrapper-checked" not in btn_cls:
+                        target_btn.click()
+                        self._sleep_random(2.0, 3.0)
+                else:
+                    logger.info(f"Tombol periode '{target_period}' pada Daftar Video sudah dalam status aktif.")
             else:
-                fallback_period = page.locator(f"label.ant-radio-button-wrapper:has-text('{target_period}'), span:text-is('{target_period}')").first
-                if fallback_period.count() > 0 and fallback_period.is_visible():
-                    fallback_period.click()
-                    self._sleep_random(2.5, 4.0)
+                logger.warning(f"Tombol periode '{target_period}' di area Daftar Video tidak ditemukan/visible.")
         except Exception as p_err:
             logger.warning(f"Gagal memilih tombol periode '{target_period}': {p_err}")
 
